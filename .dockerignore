@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.git
+.github
+.claude
+.vscode
+.idea
+node_modules
+vendor
+public/build
+public/hot
+storage/app/private
+storage/app/public
+database/*.sqlite
+database/*.sql
+tests
