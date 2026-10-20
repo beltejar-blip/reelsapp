@@ -40,4 +40,4 @@ RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/fra
 
 EXPOSE 80
 
-CMD ["sh", "-c", "touch database/database.sqlite && php artisan migrate --force && php artisan db:seed --class=CategorySeeder --force && php artisan storage:link && apache2-foreground"]
+CMD ["sh", "-c", "touch database/database.sqlite && php artisan migrate --force && php artisan db:seed --class=CategorySeeder --force && php artisan storage:link && chown -R www-data:www-data database storage bootstrap/cache && apache2-foreground"]
