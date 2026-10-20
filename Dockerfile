@@ -1,7 +1,7 @@
 FROM php:8.5-apache AS php-base
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libicu-dev libzip-dev unzip \
+    && apt-get install -y --no-install-recommends libicu-dev libsqlite3-dev libzip-dev unzip \
     && docker-php-ext-install bcmath intl pdo_sqlite zip \
     && a2enmod rewrite \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
