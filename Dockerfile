@@ -1,14 +1,4 @@
-FROM node:22-bookworm-slim AS assets
-
-WORKDIR /app
-
-COPY package.json package-lock.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-FROM php:8.5-apache
+FROM php:8.5-apache AS php-base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libicu-dev libzip-dev unzip \
@@ -23,12 +13,30 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-COPY . .
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader \
-    && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache
+FROM php-base AS vendor
 
+COPY . .
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+FROM node:22-bookworm-slim AS assets
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+COPY --from=vendor /var/www/html/vendor ./vendor
+RUN npm run build
+
+FROM php-base AS runtime
+
+COPY . .
+COPY --from=vendor /var/www/html/vendor ./vendor
 COPY --from=assets /app/public/build /var/www/html/public/build
+
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 80
 
