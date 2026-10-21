@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Auth\FacebookAuthController;
+use App\Http\Controllers\Auth\LoginOtpController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReelController;
 use App\Http\Controllers\VideoController;
@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/login')->name('home');
 
 Route::middleware('guest')->group(function () {
-    Route::get('auth/facebook/redirect', [FacebookAuthController::class, 'redirect'])->name('auth.facebook.redirect');
-    Route::get('auth/facebook/callback', [FacebookAuthController::class, 'callback'])->name('auth.facebook.callback');
+    Route::get('email-otp', [LoginOtpController::class, 'show'])->middleware('throttle:login-otp')->name('email-otp.challenge');
+    Route::post('email-otp', [LoginOtpController::class, 'verify'])->name('email-otp.verify');
+    Route::post('email-otp/resend', [LoginOtpController::class, 'resend'])->name('email-otp.resend');
 });
 
 // After login the "dashboard" is the Reels feed.

@@ -1,12 +1,23 @@
 <?php
 
+use App\Mail\LoginOtp;
 use App\Models\User;
-use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Mail;
 
 test('login screen can be rendered', function () {
     $response = $this->get(route('login'));
 
-    $response->assertOk();
+    $response->assertOk()->assertDontSee('Continue with Facebook');
+});
+
+test('facebook authentication endpoints are not available', function () {
+    $this->get('/auth/facebook/redirect')->assertNotFound();
+    $this->get('/auth/facebook/callback')->assertNotFound();
+});
+
+test('alternate passwordless and two-factor login endpoints are unavailable', function () {
+    $this->get('/passkeys/login/options')->assertNotFound();
+    $this->get('/two-factor-challenge')->assertNotFound();
 });
 
 test('login screen uses https behind a tls-terminating proxy', function () {
@@ -20,6 +31,7 @@ test('login screen uses https behind a tls-terminating proxy', function () {
 });
 
 test('users can authenticate using the login screen', function () {
+    Mail::fake();
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
@@ -29,12 +41,16 @@ test('users can authenticate using the login screen', function () {
 
     $response
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('dashboard', absolute: false));
+        ->assertRedirect(route('email-otp.challenge'));
 
-    $this->assertAuthenticated();
+    $this->assertGuest();
+    $response->assertSessionHas('login_otp.user_id', $user->id);
+
+    Mail::assertSent(LoginOtp::class, fn (LoginOtp $mail): bool => $mail->hasTo($user->email));
 });
 
 test('users can not authenticate with invalid password', function () {
+    Mail::fake();
     $user = User::factory()->create();
 
     $response = $this->post(route('login.store'), [
@@ -45,25 +61,7 @@ test('users can not authenticate with invalid password', function () {
     $response->assertSessionHasErrorsIn('email');
 
     $this->assertGuest();
-});
-
-test('users with two factor enabled are redirected to two factor challenge', function () {
-    $this->skipUnlessFortifyHas(Features::twoFactorAuthentication());
-
-    Features::twoFactorAuthentication([
-        'confirm' => true,
-        'confirmPassword' => true,
-    ]);
-
-    $user = User::factory()->withTwoFactor()->create();
-
-    $response = $this->post(route('login.store'), [
-        'email' => $user->email,
-        'password' => 'password',
-    ]);
-
-    $response->assertRedirect(route('two-factor.login'));
-    $this->assertGuest();
+    Mail::assertNothingSent();
 });
 
 test('users can logout', function () {
